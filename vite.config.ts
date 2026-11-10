@@ -17,8 +17,10 @@ export default defineConfig({
         start_url: './',
         scope: './',
         display: 'standalone',
-        background_color: '#f2f2f7',
-        theme_color: '#f2f2f7',
+        // Android paints system bars and the window behind them from these; the page's
+        // theme-color meta tags switch the status bar for light mode at runtime.
+        background_color: '#000000',
+        theme_color: '#000000',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
