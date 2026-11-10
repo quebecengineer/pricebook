@@ -1,0 +1,60 @@
+/* Apple HIG system tokens. Text colors use Increased Contrast values to meet WCAG AA. */
+:root {
+  color-scheme: light dark;
+  --accent: #1b7a34;
+  --on-accent: #fff;
+  --label: #000;
+  --label-2: #6c6c70;
+  --label-3: #aeaeb2;
+  --bg: #f2f2f7;
+  --cell: #fff;
+  --fill: rgb(118 118 128 / 0.12);
+  --segment: #fff;
+  --separator: rgb(60 60 67 / 0.29);
+  --danger: #d70015;
+  --material: rgb(249 249 249 / 0.82);
+  --scrim: rgb(0 0 0 / 0.4);
+  --shadow: 0 8px 28px rgb(0 0 0 / 0.18);
+
+  --t-large: 2rem;
+  --t-title2: 1.3rem;
+  --t-title3: 1.18rem;
+  --t-body: 1rem;
+  --t-sub: 0.882rem;
+  --t-foot: 0.765rem;
+  --t-cap: 0.706rem;
+
+  --r-cell: 10px;
+  --r-sheet: 12px;
+  --inset: 16px;
+  --tap: 44px;
+  --nav-h: calc(44px + env(safe-area-inset-top));
+  --toolbar-h: calc(50px + env(safe-area-inset-bottom));
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #30d158;
+    --on-accent: #000;
+    --label: #fff;
+    --label-2: #98989f;
+    --label-3: #636366;
+    --bg: #000;
+    --cell: #1c1c1e;
+    --fill: rgb(118 118 128 / 0.24);
+    --segment: #636366;
+    --separator: rgb(84 84 88 / 0.65);
+    --danger: #ff6961;
+    --material: rgb(22 22 24 / 0.82);
+    --shadow: 0 8px 28px rgb(0 0 0 / 0.6);
+  }
+}
+
+html {
+  font: 17px/1.29 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+@supports (font: -apple-system-body) {
+  html { font: -apple-system-body; }
+}

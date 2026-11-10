@@ -1,4 +1,6 @@
 import { signal } from '@preact/signals'
+import { useEffect, useRef } from 'preact/hooks'
+import { Icon } from './Icon'
 
 interface Note {
   text: string
@@ -22,16 +24,25 @@ export function fail(e: unknown, prefix?: string) {
   toast(prefix ? `${prefix}: ${message}` : message, { tone: 'bad' })
 }
 
+/** Banner kept open in the top layer and re-stacked per message, so it shows above an open sheet. */
 export function Toast() {
+  const host = useRef<HTMLDivElement>(null)
   const n = note.value
+  useEffect(() => {
+    const el = host.current
+    if (!el || !('showPopover' in el)) return
+    if (el.matches(':popover-open')) el.hidePopover()
+    el.showPopover()
+  }, [n])
   const run = () => {
     note.value = null
     n?.action?.run()
   }
   return (
-    <div class="toast-host" role="status" aria-live="polite">
+    <div ref={host} popover="manual" class="toast-host" role="status" aria-live="polite">
       {n && (
         <div class={`toast ${n.tone ?? ''}`}>
+          {n.tone && <Icon name={n.tone === 'good' ? 'trending-down' : 'alert'} size={20} />}
           <span>{n.text}</span>
           {n.action && <button onClick={run}>{n.action.label}</button>}
         </div>

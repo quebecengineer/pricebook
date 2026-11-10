@@ -1,16 +1,20 @@
 import { useEffect } from 'preact/hooks'
+import { installPrompt, isIOS, persisted, promptInstall, standalone } from '../install'
 import { byName, live } from '../model'
 import { settings, updateSettings } from '../settings'
 import { absorb, data, rename } from '../state'
 import { driveEnabled, preloadGis } from '../sync/drive'
 import { parseSnapshot, toSnapshot } from '../sync/merge'
-import { connect, disconnect, syncStatus } from '../sync/sync'
-import { Bar } from './Bar'
-import { NameField } from './NameField'
+import { connect, disconnect, syncStatus, type SyncStatus } from '../sync/sync'
+import { NavBar } from './Bar'
+import { Cell, Group, NameRow, Row } from './kit'
 import { fail, toast } from './Toast'
 
 const CURRENCIES = Intl.supportedValuesOf('currency')
 const MAX_IMPORT_BYTES = 10_000_000
+const STATUS: Record<SyncStatus, string> = {
+  off: 'Off', 'signed-out': 'Paused', offline: 'Offline', idle: 'Up to date', syncing: 'Syncing…', error: 'Failed',
+}
 
 function exportFile() {
   const blob = new Blob([JSON.stringify(toSnapshot(data.value))], { type: 'application/json' })
@@ -35,82 +39,93 @@ async function importFile(e: Event) {
   }
 }
 
-export function Settings() {
-  return (
-    <>
-      <Bar title="Settings" hasBack />
-      <main>
-        <section>
-          <h2>Currency</h2>
-          <select
-            aria-label="Currency"
-            value={settings.value.currency}
-            onChange={(e) => updateSettings({ currency: e.currentTarget.value })}
-          >
-            {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </section>
-        <DriveSection />
-        <section>
-          <h2>Backup file</h2>
-          <p class="hint">Importing merges: newer edits win and nothing else is overwritten.</p>
-          <div class="fields">
-            <button onClick={exportFile}>Export</button>
-            <label class="button">
-              Import
-              <input class="sr-only" type="file" accept="application/json,.json" onChange={importFile} />
-            </label>
-          </div>
-        </section>
-        <section>
-          <h2>Stores</h2>
-          <p class="hint">Rename a store to an existing name to merge them.</p>
-          {live(data.value.stores).sort(byName).map((s) => (
-            <NameField
-              key={s.id}
-              label={`Rename ${s.name}`}
-              value={s.name}
-              onSave={async (name) => toast((await rename('stores', s, name)) ? 'Stores merged' : 'Renamed')}
-            />
-          ))}
-        </section>
-      </main>
-    </>
-  )
-}
-
-function DriveSection() {
+function SyncGroup() {
   const { driveConnected, lastSync } = settings.value
   useEffect(() => {
     if (driveEnabled) void preloadGis()
   }, [])
   const sync = () => connect().catch((e) => fail(e, 'Sync failed'))
+  if (!driveEnabled) {
+    return (
+      <Group header="Sync" footer="This build has no Google client ID, so Drive sync is off. Use Backup to move prices between devices.">
+        <Row title="Google Drive" value="Not set up" />
+      </Group>
+    )
+  }
+  if (!driveConnected) {
+    return (
+      <Group header="Sync" footer="Keeps one file, pricebook.json, in your Google Drive so your devices share prices. The app can only see files it created.">
+        <Row title="Connect Google Drive" tone="accent" onClick={sync} />
+      </Group>
+    )
+  }
   return (
-    <section>
-      <h2>Google Drive sync</h2>
-      {!driveEnabled ? (
-        <p class="hint">Not configured in this build (missing Google client ID).</p>
-      ) : driveConnected ? (
-        <>
-          <p class="hint">
-            Syncing <code>pricebook.json</code> in your Drive. Last synced:{' '}
-            {lastSync ? new Date(lastSync).toLocaleString() : 'never'}.
-          </p>
-          <div class="fields">
-            <button onClick={sync} disabled={syncStatus.value === 'syncing'}>
-              Sync now
-            </button>
-            <button onClick={disconnect}>Disconnect</button>
-          </div>
-        </>
+    <Group header="Sync" footer="Syncs a few seconds after each change and whenever you come back online.">
+      <Row title="Google Drive" value={STATUS[syncStatus.value]} />
+      <Row title="Last Synced" value={lastSync ? new Date(lastSync).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Never'} />
+      <Row title="Sync Now" tone="accent" onClick={sync} />
+      <Row title="Disconnect" tone="danger" onClick={disconnect} />
+    </Group>
+  )
+}
+
+function DeviceGroup() {
+  const install = installPrompt.value
+  const howTo = isIOS ? 'Tap Share, then Add to Home Screen' : 'Browser menu, then Install app or Add to Home screen'
+  return (
+    <Group header="This Device" footer="Installing keeps the app one tap away offline and protects its storage from automatic cleanup.">
+      {standalone.value ? (
+        <Row title="App" value="Installed" />
+      ) : install ? (
+        <Row title="Install App" tone="accent" onClick={() => void promptInstall()} />
       ) : (
-        <>
-          <p class="hint">Keeps one file in your Drive so your devices share prices. The app can only see files it created.</p>
-          <button class="primary" onClick={sync}>
-            Connect Google Drive
-          </button>
-        </>
+        <Row title="Install App" subtitle={howTo} />
       )}
-    </section>
+      <Row title="Offline Storage" value={persisted.value ? 'Protected' : 'Not protected'} />
+    </Group>
+  )
+}
+
+export function Settings() {
+  const stores = live(data.value.stores).sort(byName)
+  return (
+    <>
+      <NavBar title="Settings" large back="Pricebook" />
+      <main>
+        <Group header="General">
+          <Row
+            title="Currency"
+            value={
+              <select class="row-select" aria-label="Currency" value={settings.value.currency} onChange={(e) => updateSettings({ currency: e.currentTarget.value })}>
+                {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            }
+          />
+        </Group>
+        <SyncGroup />
+        <Group header="Backup" footer="Importing merges: newer edits win and nothing else is overwritten.">
+          <Row title="Export Backup" tone="accent" onClick={exportFile} />
+          <Cell>
+            <label class="row-main">
+              <span class="row-text">
+                <span class="row-title accent">Import Backup</span>
+              </span>
+              <input class="sr-only" type="file" accept="application/json,.json" onChange={importFile} />
+            </label>
+          </Cell>
+        </Group>
+        {stores.length > 0 && (
+          <Group header="Stores" footer="Rename a store to an existing name to merge them.">
+            {stores.map((s) => (
+              <NameRow
+                key={s.id} label={`Store name: ${s.name}`} hideLabel value={s.name}
+                onSave={async (name) => toast((await rename('stores', s, name)) ? 'Stores merged' : 'Renamed')}
+              />
+            ))}
+          </Group>
+        )}
+        <DeviceGroup />
+      </main>
+    </>
   )
 }

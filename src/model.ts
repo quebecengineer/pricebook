@@ -73,6 +73,38 @@ export function latestByStore(prices: Price[]) {
   return [...latest.values()].sort((a, b) => unitPrice(a) - unitPrice(b))
 }
 
+export interface Comparison {
+  price: Price
+  /** Unit price relative to the dearest store, for bar widths. */
+  ratio: number
+  /** Percent above the cheapest store; 0 for the cheapest. */
+  deltaPct: number
+}
+
+export function compare(prices: Price[]): Comparison[] {
+  const latest = latestByStore(prices)
+  const min = latest[0] ? unitPrice(latest[0]) : 0
+  const max = latest.length ? unitPrice(latest[latest.length - 1]!) : 0
+  return latest.map((price) => ({
+    price,
+    ratio: max ? unitPrice(price) / max : 1,
+    deltaPct: min ? Math.round((unitPrice(price) / min - 1) * 100) : 0,
+  }))
+}
+
+/** Stores you have logged prices at, most recently used first. */
+export function recentStores({ stores, prices }: Data, limit: number) {
+  const last = new Map<string, number>()
+  for (const p of live(prices)) last.set(p.storeId, Math.max(last.get(p.storeId) ?? 0, p.at))
+  return live(stores)
+    .filter((s) => last.has(s.id))
+    .sort((a, b) => last.get(b.id)! - last.get(a.id)!)
+    .slice(0, limit)
+}
+
+const STALE_MS = 90 * 86_400_000
+export const isStale = (at: number, now = Date.now()) => now - at > STALE_MS
+
 export interface Row {
   item: Item
   best?: Price
@@ -92,6 +124,21 @@ function replace<T extends Base>(list: T[], changes: T[] = []) {
   const map = new Map(list.map((r) => [r.id, r]))
   for (const r of changes) map.set(r.id, r)
   return [...map.values()]
+}
+
+const letterOf = (name: string) => {
+  const ch = name.normalize('NFD').charAt(0).toLocaleUpperCase()
+  return /\p{L}/u.test(ch) ? ch : '#'
+}
+
+/** Groups already-sorted rows under their first letter, for an indexed list. */
+export function sections(list: Row[]): [string, Row[]][] {
+  const groups = new Map<string, Row[]>()
+  for (const row of list) {
+    const letter = letterOf(row.item.name)
+    groups.set(letter, [...(groups.get(letter) ?? []), row])
+  }
+  return [...groups]
 }
 
 /** Replaces records by id. */

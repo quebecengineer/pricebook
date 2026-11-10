@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { bestByItem, bestPrice, findByName, latestByStore, normalizeName, rows, upsert, type Price } from '../src/model'
+import {
+  bestByItem, bestPrice, compare, findByName, isStale, latestByStore, normalizeName, recentStores, rows, sections, upsert,
+  type Price,
+} from '../src/model'
 
 const price = (id: string, cents: number, qty: number, at: number, extra: Partial<Price> = {}): Price => ({
   id, itemId: 'milk', storeId: 's1', cents, qty, at, updatedAt: at, ...extra,
@@ -65,6 +68,46 @@ describe('rows', () => {
     const [row] = rows(data, ' APP')
     expect(row?.item.id).toBe('a')
     expect(row?.best?.id).toBe('p')
+  })
+})
+
+describe('compare', () => {
+  it('ranks stores and measures each against the cheapest', () => {
+    const list = compare([price('a', 300, 1, 1), price('b', 200, 1, 2, { storeId: 's2' }), price('c', 100, 1, 3, { storeId: 's3' })])
+    expect(list.map((c) => [c.price.id, c.deltaPct, Math.round(c.ratio * 100)])).toEqual([
+      ['c', 0, 33],
+      ['b', 100, 67],
+      ['a', 200, 100],
+    ])
+  })
+  it('is empty without prices', () => expect(compare([])).toEqual([]))
+})
+
+describe('recentStores', () => {
+  it('orders used stores by last visit and skips unused ones', () => {
+    const data = {
+      items: [],
+      stores: ['s1', 's2', 's3'].map((id) => ({ id, name: id, updatedAt: 1 })),
+      prices: [price('a', 1, 1, 5), price('b', 1, 1, 9, { storeId: 's2' }), price('c', 1, 1, 1, { storeId: 's1' })],
+    }
+    expect(recentStores(data, 5).map((s) => s.id)).toEqual(['s2', 's1'])
+    expect(recentStores(data, 1)).toHaveLength(1)
+  })
+})
+
+describe('isStale', () => {
+  const day = 86_400_000
+  it('flags prices older than 90 days', () => {
+    expect(isStale(0, 91 * day)).toBe(true)
+    expect(isStale(0, 89 * day)).toBe(false)
+  })
+})
+
+describe('sections', () => {
+  const row = (name: string) => ({ item: { id: name, name, unit: 'pc' as const, updatedAt: 1 } })
+  it('groups by first letter, folding accents and sending non-letters to #', () => {
+    const groups = sections([row('7up'), row('apple'), row('Avocado'), row('Éclair'), row('eggs')])
+    expect(groups.map(([letter, rs]) => [letter, rs.length])).toEqual([['#', 1], ['A', 2], ['E', 2]])
   })
 })
 

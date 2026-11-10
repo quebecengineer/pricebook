@@ -9,9 +9,11 @@ A private, offline-first grocery price tracker. Log what you pay; see, at a glan
 
 ## Use
 
-1. Tap **+**, type the item, store, price and (optionally) pack size, then **Save price**. The form stays open with the same store for the next item.
-2. At checkout, search the list. Tap an item for the latest price at each store and the full history.
-3. **Settings** has currency, Drive sync, backup export/import, and store rename/merge. Renaming onto an existing name merges the two.
+1. Tap **Log Price** in the bottom toolbar, or the **+** on an item's row. Pick a recent store chip, type the price (and optionally the pack size), and the sheet tells you whether it beats your best before you tap **Save**. The sheet stays open, with the same store, for the next item; **Done** closes it.
+2. At checkout, search the list. Tap an item for its all-time best, a comparison of the latest price at each store, and the full history. Tap a history entry to correct it; **Edit** reveals delete, rename and Delete Item (all undoable).
+3. **Settings** has currency, Drive sync, backup export/import, store rename/merge, and install/offline-storage status.
+
+The interface follows Apple's Human Interface Guidelines (large titles, inset grouped lists, modal sheets) and respects your text size, dark mode and reduced-motion settings.
 
 Install it from the browser menu ("Add to Home screen" / "Install app") so storage is kept long-term.
 
@@ -63,4 +65,8 @@ Every push to `main` runs typecheck, tests and build, then deploys.
 | `src/sync/merge.ts` | Validation of untrusted files and last-write-wins merge |
 | `src/sync/drive.ts` | Google sign-in and Drive REST calls |
 | `src/sync/sync.ts` | When and how sync runs; status for the UI |
-| `src/ui/*` | Views: list, quick add, item detail, settings |
+| `src/ui/kit.tsx`, `Bar.tsx`, `Sheet.tsx` | HIG building blocks: grouped rows, fields, chips, segmented control, navigation bar, modal sheet |
+| `src/ui/*` | Screens: list, log sheet, item detail, settings |
+| `src/tokens.css` | Design tokens: system colors (WCAG AA), Dynamic Type scale, radii, materials |
+
+Icons are adapted from [Lucide](https://lucide.dev) (ISC license).

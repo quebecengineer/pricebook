@@ -23,11 +23,16 @@ export function parseAmount(text: string) {
 export const parseCents = (text: string) => Math.round(parseAmount(text) * 100)
 
 const formatters = new Map<string, Intl.NumberFormat>()
-export function formatMoney(cents: number, currency: string) {
+function formatter(currency: string) {
   let f = formatters.get(currency)
   if (!f) formatters.set(currency, (f = new Intl.NumberFormat(undefined, { style: 'currency', currency })))
-  return f.format(cents / 100)
+  return f
 }
+export const formatMoney = (cents: number, currency: string) => formatter(currency).format(cents / 100)
+export const currencySymbol = (currency: string) =>
+  formatter(currency).formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency
+export const formatDate = (at: number) =>
+  new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
 export const formatUnitPrice = (p: Price, unit: Unit, currency: string) =>
   `${formatMoney(p.cents / p.qty, currency)}/${unit}`
