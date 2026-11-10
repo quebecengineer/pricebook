@@ -29,7 +29,7 @@ npm run check      # typecheck + tests + production build
 
 1. Push this repo to GitHub with a `main` branch.
 2. **Settings → Pages → Source:** GitHub Actions.
-3. Optional sync: add the repository variable `VITE_GOOGLE_CLIENT_ID` (see below). Without it the app works fully, minus Drive sync.
+3. Optional sync: create a Google client ID (see below) and paste it in Settings. Without it the app works fully, minus Drive sync.
 
 Every push to `main` runs typecheck, tests and build, then deploys.
 
@@ -40,7 +40,10 @@ Every push to `main` runs typecheck, tests and build, then deploys.
 3. **Credentials → Create OAuth client ID → Web application.** Authorized JavaScript origins:
    - `https://<your-user>.github.io`
    - `http://localhost:5173` (for development)
-4. Copy the client ID into the GitHub repository variable `VITE_GOOGLE_CLIENT_ID` (or into `.env.local` for development).
+4. Paste the client ID into the app: **Settings → Google Client ID → Save**, then tap **Connect Google Drive**. Do this once on each device (it's stored on the device).
+   - Optional: to bake it into every install instead, set the GitHub repository variable `VITE_GOOGLE_CLIENT_ID` (or `.env.local` for development). A value saved in Settings takes precedence.
+
+The client ID is not a secret: browser apps ship it in their page code, Google only honors it from the origins you authorized, and Testing mode limits sign-in to your test users. Never paste an API key or client secret; the app checks that the value ends in `.apps.googleusercontent.com`.
 
 ### How sync behaves
 

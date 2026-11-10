@@ -1,3 +1,5 @@
+import { settings } from '../settings'
+
 interface TokenResponse {
   access_token: string
   expires_in: number
@@ -19,13 +21,15 @@ declare global {
   }
 }
 
-const CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+const BUILD_CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 const SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const API = 'https://www.googleapis.com'
 const FILE = 'pricebook.json'
 const BOUNDARY = 'pricebook-part'
 
-export const driveEnabled = CLIENT_ID !== ''
+const clientId = () => settings.value.googleClientId || BUILD_CLIENT_ID
+export const driveReady = () => clientId() !== ''
+export const isClientId = (id: string) => /^[\w-]+\.apps\.googleusercontent\.com$/.test(id)
 
 /** Kept in memory only; Google issues short-lived tokens to browser apps. */
 let token: { value: string; expires: number } | undefined
@@ -51,11 +55,12 @@ export const preloadGis = () => loadGis().catch(() => undefined)
 export const hasToken = () => !!token && token.expires - 60_000 > Date.now()
 
 export async function signIn() {
+  if (!driveReady()) throw new Error('Add your Google Client ID in Settings first')
   const oauth2 = await loadGis()
   await new Promise<void>((resolve, reject) => {
     oauth2
       .initTokenClient({
-        client_id: CLIENT_ID,
+        client_id: clientId(),
         scope: SCOPE,
         callback: (r) => {
           if (r.error) return reject(new Error(r.error))

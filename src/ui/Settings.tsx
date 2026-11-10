@@ -3,7 +3,7 @@ import { installPrompt, isIOS, persisted, promptInstall, standalone } from '../i
 import { byName, live } from '../model'
 import { settings, updateSettings } from '../settings'
 import { absorb, data, rename } from '../state'
-import { driveEnabled, preloadGis } from '../sync/drive'
+import { driveReady, isClientId, preloadGis } from '../sync/drive'
 import { parseSnapshot, toSnapshot } from '../sync/merge'
 import { connect, disconnect, syncStatus, type SyncStatus } from '../sync/sync'
 import { NavBar } from './Bar'
@@ -39,15 +39,40 @@ async function importFile(e: Event) {
   }
 }
 
+async function saveClientId(value: string) {
+  const id = value.trim()
+  if (!isClientId(id)) throw new Error('A Client ID ends in .apps.googleusercontent.com')
+  if (settings.value.driveConnected) disconnect()
+  updateSettings({ googleClientId: id })
+  toast('Client ID saved. Now tap Connect Google Drive.')
+}
+
+function ClientIdGroup() {
+  const footer = (
+    <>
+      Free, one time: in{' '}
+      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>,
+      enable the Google Drive API, set the OAuth consent screen to Testing with you as a test user, then create an OAuth
+      client ID of type Web application with authorized JavaScript origin <b>{location.origin}</b>. It isn't a secret.
+    </>
+  )
+  return (
+    <Group header="Google Client ID" footer={footer}>
+      <NameRow label="Google OAuth Client ID" hideLabel raw value={settings.value.googleClientId} onSave={saveClientId} />
+    </Group>
+  )
+}
+
 function SyncGroup() {
   const { driveConnected, lastSync } = settings.value
+  const ready = driveReady()
   useEffect(() => {
-    if (driveEnabled) void preloadGis()
-  }, [])
+    if (ready) void preloadGis()
+  }, [ready])
   const sync = () => connect().catch((e) => fail(e, 'Sync failed'))
-  if (!driveEnabled) {
+  if (!ready) {
     return (
-      <Group header="Sync" footer="This build has no Google client ID, so Drive sync is off. Use Backup to move prices between devices.">
+      <Group header="Sync" footer="Add your Google Client ID below to back up and sync prices through your own Google Drive. Until then, use Backup.">
         <Row title="Google Drive" value="Not set up" />
       </Group>
     )
@@ -103,6 +128,7 @@ export function Settings() {
           />
         </Group>
         <SyncGroup />
+        <ClientIdGroup />
         <Group header="Backup" footer="Importing merges: newer edits win and nothing else is overwritten.">
           <Row title="Export Backup" tone="accent" onClick={exportFile} />
           <Cell>

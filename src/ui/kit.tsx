@@ -70,17 +70,20 @@ interface FieldProps {
   autoFocus?: boolean
   disabled?: boolean
   hideLabel?: boolean
+  /** Codes and IDs: no auto-capitalize, autocorrect or spellcheck. */
+  raw?: boolean
   inputRef?: Ref<HTMLInputElement>
 }
 
 /** iOS form row: label on the left, input filling the rest. */
-export function Field({ label, onValue, inputRef, decimal, prefix, hideLabel, class: cls, ...input }: FieldProps) {
+export function Field({ label, onValue, inputRef, decimal, prefix, hideLabel, raw, class: cls, ...input }: FieldProps) {
   return (
     <label class={`field ${cls ?? ''}`}>
       <span class={hideLabel ? 'sr-only' : 'field-label'}>{label}</span>
       {prefix && <span class="prefix" aria-hidden="true">{prefix}</span>}
       <input
-        {...input} ref={inputRef} maxLength={100} autoComplete="off" autoCapitalize={decimal ? 'off' : 'words'}
+        {...input} ref={inputRef} maxLength={100} autoComplete="off" autoCapitalize={decimal || raw ? 'off' : 'words'}
+        autoCorrect={raw ? 'off' : undefined} spellcheck={!raw}
         inputMode={decimal ? 'decimal' : 'text'} pattern={decimal ? '[0-9]*[.,]?[0-9]*' : undefined}
         enterKeyHint={decimal ? 'done' : 'next'} onInput={(e) => onValue(e.currentTarget.value)}
       />
@@ -119,7 +122,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
 }
 
 /** Inline rename cell; saving is explicit so a stray tap never renames anything. */
-export function NameRow({ label, value, hideLabel, onSave }: { label: string; value: string; hideLabel?: boolean; onSave: (name: string) => Promise<unknown> }) {
+export function NameRow({ label, value, hideLabel, raw, onSave }: { label: string; value: string; hideLabel?: boolean; raw?: boolean; onSave: (name: string) => Promise<unknown> }) {
   const [name, setName] = useState(value)
   const submit = (e: Event) => {
     e.preventDefault()
@@ -128,7 +131,7 @@ export function NameRow({ label, value, hideLabel, onSave }: { label: string; va
   return (
     <Cell>
       <form class="inline-form" onSubmit={submit}>
-        <Field label={label} value={name} onValue={setName} hideLabel={hideLabel} />
+        <Field label={label} value={name} onValue={setName} hideLabel={hideLabel} raw={raw} placeholder={raw ? 'Paste here' : undefined} />
         <button class="nav-btn strong" disabled={!name.trim() || name.trim() === value}>Save</button>
       </form>
     </Cell>

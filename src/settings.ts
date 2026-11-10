@@ -5,10 +5,12 @@ export interface Settings {
   lastStore: string
   driveConnected: boolean
   lastSync?: number
+  /** OAuth client ID pasted in Settings; overrides the one baked into the build. */
+  googleClientId: string
 }
 
 const KEY = 'pricebook.settings'
-const DEFAULTS: Settings = { currency: 'INR', lastStore: '', driveConnected: false }
+const DEFAULTS: Settings = { currency: 'INR', lastStore: '', driveConnected: false, googleClientId: '' }
 
 function read(): Settings {
   try {
