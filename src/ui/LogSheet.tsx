@@ -10,7 +10,7 @@ import {
   ALL_SIZE_UNITS, baseOf, currencySymbol, formatMoney, formatUnitPrice, fromBase, parseAmount, parseCents, sizeIn,
   toBase, unitsFor, type SizeUnit,
 } from '../units'
-import { Cell, Chips, Field, Group, Row, Segmented, haptic } from './kit'
+import { Cell, Chips, Field, Group, Row, Segmented, haptic, nextOnEnter } from './kit'
 import { Sheet } from './Sheet'
 import { fail, toast } from './Toast'
 import { removeWithUndo } from './undo'
@@ -116,7 +116,7 @@ export function LogSheet({ arg, edit }: { arg: string; edit?: boolean }) {
   )
   return (
     <Sheet title={editing ? 'Edit Price' : 'Log Price'} onClose={close} trailing={save}>
-      <form id="log-form" onSubmit={submit} noValidate>
+      <form id="log-form" onSubmit={submit} onKeyDown={nextOnEnter} noValidate>
         <Group>
           <Cell>
             <Field

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { back } from '../router'
 import { peekBackup, restore } from '../sync/sync'
 import { formatBytes, formatDateTime } from '../units'
-import { Cell, Group, Row, SecretField } from './kit'
+import { Cell, Group, Row, SecretField, nextOnEnter } from './kit'
 import { Sheet } from './Sheet'
 import { fail, toast } from './Toast'
 
@@ -51,7 +51,7 @@ export function RestoreSheet() {
         </Group>
       ) : (
         <>
-          <form id="restore-form" onSubmit={submit} noValidate>
+          <form id="restore-form" onSubmit={submit} onKeyDown={nextOnEnter} noValidate>
             <Group header="Backup Found" footer="Restoring adds the backup's prices to this device. Nothing here is deleted.">
               <Row title="Last Backup" value={formatDateTime(found.modified)} />
               <Row title="Size" value={formatBytes(found.size)} />

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
 import { back } from '../router'
 import { backupKey, removePassword, setPassword, syncNow, syncStatus, unlockBackup } from '../sync/sync'
-import { Cell, Group, Row, SecretField } from './kit'
+import { Cell, Group, Row, SecretField, nextOnEnter } from './kit'
 import { Sheet } from './Sheet'
 import { fail, toast } from './Toast'
 
@@ -52,7 +52,7 @@ export function PasswordSheet() {
   )
   return (
     <Sheet title={title} onClose={back} trailing={action}>
-      <form id="password-form" onSubmit={submit} noValidate>
+      <form id="password-form" onSubmit={submit} onKeyDown={nextOnEnter} noValidate>
         <Group
           footer={locked ? 'Your backup was encrypted on another device. Enter the same password here.' : WARNING}
         >

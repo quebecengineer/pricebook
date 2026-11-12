@@ -10,12 +10,26 @@ interface Note {
 }
 
 const note = signal<Note | null>(null)
+const leaving = signal(false)
+/** Matches the toast-out animation in surfaces.css. */
+const LEAVE_MS = 160
 let timer: ReturnType<typeof setTimeout> | undefined
+
+/** Plays the exit, then clears; a new toast arriving meanwhile cancels it. */
+function dismiss() {
+  clearTimeout(timer)
+  leaving.value = true
+  timer = setTimeout(() => {
+    note.value = null
+    leaving.value = false
+  }, LEAVE_MS)
+}
 
 export function toast(text: string, opts: Omit<Note, 'text'> = {}) {
   clearTimeout(timer)
+  leaving.value = false
   note.value = { text, ...opts }
-  if (!opts.sticky) timer = setTimeout(() => (note.value = null), opts.action ? 8000 : 3500)
+  if (!opts.sticky) timer = setTimeout(dismiss, opts.action ? 8000 : 3500)
 }
 
 export function fail(e: unknown, prefix?: string) {
@@ -35,13 +49,13 @@ export function Toast() {
     el.showPopover()
   }, [n])
   const run = () => {
-    note.value = null
+    dismiss()
     n?.action?.run()
   }
   return (
     <div ref={host} popover="manual" class="toast-host" role="status" aria-live="polite">
       {n && (
-        <div class={`toast ${n.tone ?? ''}`}>
+        <div class={`toast ${n.tone ?? ''} ${leaving.value ? 'leaving' : ''}`}>
           {n.tone && <Icon name={n.tone === 'good' ? 'trending-down' : 'alert'} size={20} />}
           <span>{n.text}</span>
           {n.action && <button onClick={run}>{n.action.label}</button>}

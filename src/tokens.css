@@ -30,7 +30,14 @@
   --tap: 44px;
   --nav-h: calc(44px + env(safe-area-inset-top));
   --toolbar-h: calc(50px + env(safe-area-inset-bottom));
+
+  /* Motion: exits run at about 70% of entrances. */
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 380ms;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Damped spring (damping ratio 0.75, about 3% overshoot), sampled for CSS. */
+  --spring: linear(0, 0.044, 0.149, 0.283, 0.424, 0.558, 0.677, 0.776, 0.856, 0.917, 0.961, 0.992, 1.011, 1.022, 1.027, 1.028, 1.027, 1.023, 1.019, 1.015, 1.012, 1.008, 1.006, 1.004, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +55,31 @@
     --danger: #ff6961;
     --material: rgb(22 22 24 / 0.82);
     --shadow: 0 8px 28px rgb(0 0 0 / 0.6);
+  }
+  /* Modal sheets sit on iOS's elevated dark surfaces. */
+  dialog.sheet {
+    --bg: #1c1c1e;
+    --cell: #2c2c2e;
+    --segment: #636366;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root { --material: var(--bg); }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --label-2: #3a3a3c;
+    --label-3: #636366;
+    --separator: rgb(60 60 67 / 0.6);
+  }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root {
+    --label-2: #d1d1d6;
+    --label-3: #aeaeb2;
+    --separator: rgb(140 140 145 / 0.8);
   }
 }
 

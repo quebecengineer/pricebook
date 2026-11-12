@@ -32,8 +32,8 @@ interface RowProps {
   after?: Kids
 }
 
-/** Standard table row: navigates with `href`, acts with `onClick`, or just displays. */
-export function Row({ title, subtitle, value, accent, tone, href, onClick, label, before, after }: RowProps) {
+/** A row's contents without its list item, for wrappers such as `Swipe` that supply their own. */
+export function RowBody({ title, subtitle, value, accent, tone, href, onClick, label, before, after }: RowProps) {
   const body = (
     <>
       <span class="row-text">
@@ -45,7 +45,7 @@ export function Row({ title, subtitle, value, accent, tone, href, onClick, label
     </>
   )
   return (
-    <li class="cell">
+    <>
       {before}
       {href ? (
         <a class="row-main" {...link(href)} aria-label={label}>{body}</a>
@@ -55,9 +55,16 @@ export function Row({ title, subtitle, value, accent, tone, href, onClick, label
         <div class="row-main">{body}</div>
       )}
       {after}
-    </li>
+    </>
   )
 }
+
+/** Standard table row: navigates with `href`, acts with `onClick`, or just displays. */
+export const Row = (props: RowProps) => (
+  <li class="cell">
+    <RowBody {...props} />
+  </li>
+)
 
 interface FieldProps {
   label: string
@@ -115,6 +122,23 @@ export function SecretField({ label, value, onValue, autoComplete, autoFocus }: 
   )
 }
 
+const TYPED = 'input:not([type=radio]):not([type=checkbox]):not([type=file]):not([type=hidden]):not(:disabled)'
+
+/**
+ * Form `onKeyDown`, like the iOS keyboard's Next key: Enter moves to the next empty field (wrapping round),
+ * and only submits once every field has something in it.
+ */
+export function nextOnEnter(e: KeyboardEvent) {
+  const field = e.target
+  if (e.key !== 'Enter' || e.isComposing || !(field instanceof HTMLInputElement)) return
+  const fields = [...(e.currentTarget as HTMLFormElement).querySelectorAll<HTMLInputElement>(TYPED)]
+  const at = fields.indexOf(field)
+  const next = [...fields.slice(at + 1), ...fields.slice(0, at)].find((f) => !f.value.trim())
+  if (!next) return
+  e.preventDefault()
+  next.focus()
+}
+
 const same = (a = '', b = '') => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase()
 
 /** Quick-pick capsules; the one matching `selected` shows as pressed. */
@@ -131,10 +155,13 @@ export function Chips({ label, options, selected, onPick }: { label: string; opt
   )
 }
 
+/** iOS segmented control; one thumb slides between options instead of each option repainting. */
 export function Segmented<T extends string>({ label, options, value, onChange }: { label: string; options: readonly T[]; value?: T; onChange: (v: T) => void }) {
+  const at = value === undefined ? -1 : options.indexOf(value)
   return (
-    <fieldset class="segmented">
+    <fieldset class="segmented" style={{ '--n': options.length, '--i': at }}>
       <legend class="sr-only">{label}</legend>
+      {at >= 0 && <span class="thumb" aria-hidden="true" />}
       {options.map((o) => (
         <label key={o}>
           <input type="radio" name={label} value={o} checked={o === value} onChange={() => onChange(o)} />

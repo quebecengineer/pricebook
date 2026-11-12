@@ -2,7 +2,12 @@
 @import './surfaces.css';
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--label); -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: var(--bg); color: var(--label); -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+h1, h2 { text-wrap: balance; }
+p { text-wrap: pretty; }
 html:has(dialog[open]) { overflow: hidden; }
 main, .large-title { max-width: 44rem; margin: 0 auto; padding: 0 var(--inset); }
 main { padding-bottom: calc(var(--toolbar-h) + 32px); }
@@ -44,6 +49,10 @@ button:disabled { color: var(--label-3); cursor: default; }
 .search input::-webkit-search-cancel-button { display: none; }
 .search:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
 .search button { display: flex; padding: 4px; border: 0; background: none; color: var(--label-2); }
+.search-key { display: none; min-width: 20px; padding: 1px 6px; border: 0.5px solid var(--separator); border-radius: 5px; font: inherit; font-size: var(--t-cap); text-align: center; color: var(--label-2); }
+@media (hover: hover) and (pointer: fine) {
+  .search:not(:focus-within) .search-key { display: inline-block; }
+}
 .list-page .search { position: sticky; top: var(--nav-h); z-index: 1; box-shadow: 0 0 0 8px var(--bg), 0 -8px 0 8px var(--bg); }
 
 /* Inset grouped lists */
@@ -54,10 +63,31 @@ button:disabled { color: var(--label-3); cursor: default; }
 .group-footer a { color: var(--accent); text-decoration: underline; }
 .cells { list-style: none; margin: 0; padding: 0; background: var(--cell); border-radius: var(--r-cell); overflow: hidden; }
 .cell { position: relative; display: flex; align-items: center; min-height: var(--tap); }
-.cell + .cell::before { content: ''; position: absolute; top: 0; left: var(--inset); right: 0; border-top: 0.5px solid var(--separator); }
+.cell + .cell::before { content: ''; position: absolute; z-index: 1; top: 0; left: var(--inset); right: 0; border-top: 0.5px solid var(--separator); }
+
+/* Swipe actions sit under the row; the row slides to reveal them. A full swipe stretches the last one. */
+.swipe { overflow: hidden; }
+/* Colour starts where the row can uncover it before a full swipe (40%), so the left corners stay clean. */
+.swipe-actions {
+  position: absolute; inset: 0; display: flex; justify-content: flex-end; visibility: hidden;
+  background: linear-gradient(90deg, transparent 40%, var(--accent) 40%);
+}
+.swipe.revealed .swipe-actions { visibility: visible; }
+.swipe.armed .swipe-actions { background: var(--danger); }
+.swipe-action { flex: none; width: 74px; border: 0; color: #fff; font-size: var(--t-sub); font-weight: 600; }
+.swipe-action.accent { background: var(--accent); color: var(--on-accent); }
+.swipe-action.danger { background: var(--danger); }
+.swipe.armed .swipe-action:not(:last-child) { display: none; }
+.swipe-content {
+  position: relative; flex: 1; display: flex; align-items: center; min-width: 0; background: var(--cell);
+  touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .row-main {
   flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: var(--tap); padding: 11px var(--inset);
   border: 0; background: none; text-align: left;
+}
+@media (hover: hover) {
+  a.row-main:hover, button.row-main:hover, label.row-main:hover { background: color-mix(in srgb, var(--fill) 45%, transparent); }
 }
 a.row-main:active, button.row-main:active { background: var(--fill); }
 label.row-main { cursor: pointer; }
@@ -66,7 +96,8 @@ label.row-main:focus-within { outline: 3px solid var(--accent); outline-offset: 
 .row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { display: flex; align-items: center; gap: 4px; font-size: var(--t-sub); color: var(--label-2); }
 .row-value { flex: none; color: var(--label-2); font-variant-numeric: tabular-nums; }
-.row-value.accent { color: var(--accent); font-weight: 600; }
+/* Tint means "tappable" in HIG, so prices read as data: strong label colour, green only for Best and the hero. */
+.row-value.accent { color: var(--label); font-weight: 600; }
 .chev { color: var(--label-3); margin-right: -6px; }
 .row-title mark { background: none; color: inherit; font-weight: 700; }
 .accessory, .delete-btn { flex: none; display: flex; align-items: center; justify-content: center; width: var(--tap); align-self: stretch; border: 0; background: none; color: var(--accent); }
@@ -85,10 +116,15 @@ label.row-main:focus-within { outline: 3px solid var(--accent); outline-offset: 
 .chips { display: flex; gap: 8px; overflow-x: auto; margin: -16px calc(-1 * var(--inset)) 20px; padding: 10px var(--inset) 4px; scrollbar-width: none; }
 .chip { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cell); font-size: var(--t-sub); }
 .chip[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
-.segmented { flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 8px var(--inset); padding: 2px; border: 0; border-radius: 9px; background: var(--fill); }
+.segmented { position: relative; flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 8px var(--inset); padding: 2px; border: 0; border-radius: 9px; background: var(--fill); }
+.segmented label { position: relative; }
 .segmented input { position: absolute; opacity: 0; pointer-events: none; }
-.segmented span { display: block; padding: 6px 4px; border-radius: 7px; text-align: center; font-size: var(--t-sub); font-weight: 500; cursor: pointer; }
-.segmented input:checked + span { background: var(--segment); box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); font-weight: 600; }
+.segmented label span { display: block; padding: 6px 4px; border-radius: 7px; text-align: center; font-size: var(--t-sub); font-weight: 500; cursor: pointer; }
+.segmented input:checked + span { font-weight: 600; }
+.segmented .thumb {
+  position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--n)); border-radius: 7px;
+  background: var(--segment); box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); transform: translateX(calc(var(--i) * 100%)); pointer-events: none;
+}
 .segmented input:focus-visible + span { outline: 3px solid var(--accent); }
 .list-page .segmented { margin: -8px 0 20px; }
 .field select { flex: 1; min-width: 0; min-height: var(--tap); border: 0; background: none; outline: none; }
@@ -104,5 +140,6 @@ label.row-main:focus-within { outline: 3px solid var(--accent); outline-offset: 
 .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
 .bar span { display: block; height: 100%; border-radius: 3px; background: var(--label-3); }
 .best .bar span { background: var(--accent); }
+.best .row-value.accent { color: var(--accent); }
 .compare > :last-child { justify-self: end; }
 .badge { padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: var(--t-cap); font-weight: 700; }

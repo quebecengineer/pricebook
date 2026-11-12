@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals'
+import { useEffect, useRef } from 'preact/hooks'
 import { category, categoryOf } from '../categories'
 import {
   isStale, live, nameOf, normalizeName, pctAbove, rows, sections, unitPrice, type Price, type Row as ItemRowData,
@@ -11,8 +12,11 @@ import { account, syncStatus } from '../sync/sync'
 import { ago, formatUnitPrice } from '../units'
 import { IconButton, NavBar, SyncButton, Toolbar } from './Bar'
 import { Icon } from './Icon'
-import { Chips, Empty, Group, Row, Segmented } from './kit'
+import { Chips, Empty, Group, RowBody, Segmented } from './kit'
 import { MoveGroup } from './Move'
+import { animateList } from './motion'
+import { Swipe, type SwipeAction } from './Swipe'
+import { removeWithUndo } from './undo'
 
 const SORTS = ['Price', 'A–Z'] as const
 const query = signal('')
@@ -51,34 +55,70 @@ function ItemRow({ row: { item, price }, q, cheapest }: { row: ItemRowData; q: s
   ) : (
     'No price yet'
   )
+  const actions: SwipeAction[] = [
+    { label: 'Log', tone: 'accent', run: () => logFor(item.id) },
+    { label: 'Delete', tone: 'danger', run: () => animateList(() => removeWithUndo('items', item, item.name)) },
+  ]
   return (
-    <Row
-      title={<Highlight text={item.name} q={q} />}
-      subtitle={subtitle}
-      value={price && formatUnitPrice(price, item.unit, settings.value.currency)}
-      accent
-      href={`#/item/${item.id}`}
-      after={
-        <button class="accessory" aria-label={`Log price for ${item.name}`} onClick={() => logFor(item.id)}>
-          <Icon name="plus-circle" size={24} />
-        </button>
-      }
-    />
+    <Swipe id={item.id} actions={actions}>
+      <RowBody
+        title={<Highlight text={item.name} q={q} />}
+        subtitle={subtitle}
+        value={price && formatUnitPrice(price, item.unit, settings.value.currency)}
+        accent
+        href={`#/item/${item.id}`}
+        after={
+          <button class="accessory" aria-label={`Log price for ${item.name}`} onClick={() => logFor(item.id)}>
+            <Icon name="plus-circle" size={24} />
+          </button>
+        }
+      />
+    </Swipe>
   )
 }
 
+const typingIn = (target: EventTarget | null) =>
+  target instanceof HTMLElement && !!target.closest('input, textarea, select, [contenteditable]')
+
+/** `/` or Ctrl/Cmd+K jumps to search from anywhere on the list, as on the web's best-known apps. */
+function useSearchShortcut(input: { current: HTMLInputElement | null }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const combo = e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)
+      const slash = e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !typingIn(e.target)
+      if (!(combo || slash) || document.querySelector('dialog[open]')) return
+      e.preventDefault()
+      input.current?.focus()
+      input.current?.select()
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [])
+}
+
 function Search() {
+  const input = useRef<HTMLInputElement>(null)
+  useSearchShortcut(input)
+  /** Esc clears first, then leaves the field. */
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return
+    if (query.value) query.value = ''
+    else input.current?.blur()
+  }
   return (
     <div class="search" role="search">
       <Icon name="search" size={18} />
       <input
-        type="search" placeholder="Search items or categories" aria-label="Search items or categories" enterKeyHint="search"
-        autoComplete="off" value={query.value} onInput={(e) => (query.value = e.currentTarget.value)}
+        ref={input} type="search" placeholder="Search items or categories" aria-label="Search items or categories"
+        aria-keyshortcuts="/ Control+K Meta+K" enterKeyHint="search" autoComplete="off" value={query.value}
+        onInput={(e) => (query.value = e.currentTarget.value)} onKeyDown={onKeyDown}
       />
-      {query.value && (
+      {query.value ? (
         <button aria-label="Clear search" onClick={() => (query.value = '')}>
           <Icon name="x-circle" size={18} />
         </button>
+      ) : (
+        <kbd class="search-key" aria-hidden="true">/</kbd>
       )}
     </div>
   )
@@ -127,8 +167,8 @@ export function List() {
         {total > 0 && <Search />}
         {q && (
           <>
-            <Segmented label="Sort" options={SORTS} value={sort.value} onChange={(v) => (sort.value = v)} />
-            <Chips label="Categories" options={categoriesIn(list)} selected={q} onPick={(v) => (query.value = v)} />
+            <Segmented label="Sort" options={SORTS} value={sort.value} onChange={(v) => void animateList(() => (sort.value = v))} />
+            <Chips label="Categories" options={categoriesIn(list)} selected={q} onPick={(v) => void animateList(() => (query.value = v))} />
           </>
         )}
         <p class="sr-only" aria-live="polite">{status}</p>
