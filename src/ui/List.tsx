@@ -6,15 +6,20 @@ import {
 import { go } from '../router'
 import { settings } from '../settings'
 import { data } from '../state'
+import { signIn } from '../sync/drive'
+import { account, syncStatus } from '../sync/sync'
 import { ago, formatUnitPrice } from '../units'
 import { IconButton, NavBar, SyncButton, Toolbar } from './Bar'
 import { Icon } from './Icon'
 import { Chips, Empty, Group, Row, Segmented } from './kit'
+import { MoveGroup } from './Move'
 
 const SORTS = ['Price', 'A–Z'] as const
 const query = signal('')
 const sort = signal<(typeof SORTS)[number]>('Price')
 const logFor = (arg: string) => go(`#/add/${encodeURIComponent(arg)}`)
+/** Signed in: show what Drive holds. Otherwise sign in first; the return trip offers the restore. */
+const restoreFromDrive = () => (account.value ? go('#/restore') : signIn())
 
 function Highlight({ text, q }: { text: string; q: string }) {
   const at = q ? text.toLocaleLowerCase().indexOf(q.toLocaleLowerCase()) : -1
@@ -118,6 +123,7 @@ export function List() {
         }
       />
       <main>
+        {!q && <MoveGroup />}
         {total > 0 && <Search />}
         {q && (
           <>
@@ -139,6 +145,11 @@ export function List() {
             <button class="toolbar-action" onClick={() => logFor('')}>
               <Icon name="plus-circle" /> Log First Price
             </button>
+            {syncStatus.value !== 'unavailable' && (
+              <button class="toolbar-action" onClick={restoreFromDrive}>
+                <Icon name="cloud-check" /> Restore from Google Drive
+              </button>
+            )}
           </Empty>
         )}
       </main>

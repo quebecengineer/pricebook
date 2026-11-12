@@ -9,6 +9,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png}'] },
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Pricebook',
@@ -26,8 +30,9 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png}'] },
     }),
   ],
+  // `npx wrangler dev` serves the Worker on 8787; the dev server forwards the API to it.
+  server: { proxy: { '/api': 'http://localhost:8787' } },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 })

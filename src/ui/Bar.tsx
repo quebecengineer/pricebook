@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { back } from '../router'
+import { back, go } from '../router'
 import { connect, syncError, syncStatus, type SyncStatus } from '../sync/sync'
 import { Icon, type IconName } from './Icon'
 import { fail } from './Toast'
@@ -57,25 +57,30 @@ export function IconButton({ icon, label, onClick, class: cls }: { icon: IconNam
 
 export const Toolbar = ({ children }: { children: ComponentChildren }) => <footer class="toolbar">{children}</footer>
 
-const SYNC: Record<Exclude<SyncStatus, 'off'>, [IconName, string]> = {
-  'signed-out': ['cloud-off', 'Sync paused. Tap to sign in to Google Drive'],
-  offline: ['cloud-off', 'Offline. Sync resumes when connected'],
-  idle: ['cloud-check', 'Synced with Google Drive. Tap to sync now'],
-  syncing: ['refresh', 'Syncing'],
-  error: ['alert', 'Sync failed. Tap to retry'],
+const SYNC: Record<Exclude<SyncStatus, 'off' | 'unavailable'>, [IconName, string]> = {
+  'signed-out': ['cloud-off', 'Backup paused. Tap to sign in to Google Drive'],
+  offline: ['cloud-off', 'Offline. Backup resumes when connected'],
+  idle: ['cloud-check', 'Backed up to Google Drive. Tap to back up now'],
+  syncing: ['refresh', 'Backing up'],
+  locked: ['alert', 'Backup is encrypted. Tap to enter its password'],
+  error: ['alert', 'Backup failed. Tap to retry'],
+}
+
+function onSyncTap(status: SyncStatus) {
+  if (status === 'locked') return go('#/password')
+  if (status !== 'syncing' && status !== 'offline') connect().catch((e) => fail(e, 'Backup failed'))
 }
 
 export function SyncButton() {
   const status = syncStatus.value
-  if (status === 'off') return null
+  if (status === 'off' || status === 'unavailable') return null
   const [icon, label] = SYNC[status]
   const detail = status === 'error' && syncError.value ? `${label}: ${syncError.value}` : label
+  const alarm = status === 'error' || status === 'signed-out' || status === 'locked'
   return (
     <IconButton
-      icon={icon} label={detail} class={`${status === 'syncing' ? 'spin-icon' : ''} ${status === 'error' || status === 'signed-out' ? 'danger' : ''}`}
-      onClick={() => {
-        if (status !== 'syncing' && status !== 'offline') connect().catch((e) => fail(e, 'Sync failed'))
-      }}
+      icon={icon} label={detail} class={`${status === 'syncing' ? 'spin-icon' : ''} ${alarm ? 'danger' : ''}`}
+      onClick={() => onSyncTap(status)}
     />
   )
 }

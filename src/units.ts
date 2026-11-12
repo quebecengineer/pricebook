@@ -47,6 +47,11 @@ function formatter(currency: string) {
 export const formatMoney = (cents: number, currency: string) => formatter(currency).format(cents / 100)
 export const currencySymbol = (currency: string) =>
   formatter(currency).formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency
+export const formatDateTime = (at: number) => new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+export const formatBytes = (bytes: number) =>
+  new Intl.NumberFormat(undefined, { style: 'unit', unit: bytes < 1e6 ? 'kilobyte' : 'megabyte', maximumFractionDigits: 1 }).format(
+    bytes < 1e6 ? Math.max(0.1, bytes / 1e3) : bytes / 1e6,
+  )
 export const formatDate = (at: number) =>
   new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 

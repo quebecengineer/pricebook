@@ -93,6 +93,28 @@ export function Field({ label, onValue, inputRef, decimal, prefix, suffix, hideL
   )
 }
 
+interface SecretProps {
+  label: string
+  value: string
+  onValue: (value: string) => void
+  /** The hint password managers use to offer a saved password or save a new one. */
+  autoComplete: 'current-password' | 'new-password'
+  autoFocus?: boolean
+}
+
+/** Masked password row. */
+export function SecretField({ label, value, onValue, autoComplete, autoFocus }: SecretProps) {
+  return (
+    <label class="field">
+      <span class="field-label">{label}</span>
+      <input
+        type="password" value={value} autoComplete={autoComplete} autoFocus={autoFocus} maxLength={200}
+        autoCapitalize="off" spellcheck={false} onInput={(e) => onValue(e.currentTarget.value)}
+      />
+    </label>
+  )
+}
+
 const same = (a = '', b = '') => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase()
 
 /** Quick-pick capsules; the one matching `selected` shows as pressed. */

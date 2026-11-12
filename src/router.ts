@@ -22,7 +22,7 @@ export function parse(hash: string) {
   }
 }
 
-const SHEETS = new Set(['add', 'edit'])
+const SHEETS = new Set(['add', 'edit', 'restore', 'password'])
 export const isSheet = (hash: string) => SHEETS.has(parse(hash).view)
 
 function read() {
@@ -56,6 +56,12 @@ export function go(hash: string) {
   }
   if (sheet) push()
   else transition('forward', push, 0)
+}
+
+/** Swaps the current entry for a fresh start, so Back can't return to the sign-in round trip behind it. */
+export function replace(hash: string) {
+  history.replaceState(null, '', hash)
+  read()
 }
 
 /** Steps back inside the app; a deep-linked page falls back to the list instead of leaving. */

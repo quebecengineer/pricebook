@@ -1,18 +1,30 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import { KINDS, type Data, type Item, type Price, type Store } from './model'
+import type { BackupKey } from './sync/crypto'
 
 interface Schema extends DBSchema {
   items: { key: string; value: Item }
   stores: { key: string; value: Store }
   prices: { key: string; value: Price }
+  keys: { key: string; value: BackupKey }
 }
 
+const BACKUP_KEY = 'backup'
 let db: Promise<IDBPDatabase<Schema>> | undefined
 
+/** Upgrades only ever add stores, so data saved by earlier versions is kept as is. */
 const open = () =>
-  (db ??= openDB<Schema>('pricebook', 1, {
+  (db ??= openDB<Schema>('pricebook', 2, {
     upgrade(d) {
-      for (const kind of KINDS) d.createObjectStore(kind, { keyPath: 'id' })
+      for (const kind of KINDS) if (!d.objectStoreNames.contains(kind)) d.createObjectStore(kind, { keyPath: 'id' })
+      if (!d.objectStoreNames.contains('keys')) d.createObjectStore('keys')
+    },
+    blocked() {
+      globalThis.alert?.('Pricebook is updating. Close its other tabs or windows to finish.')
+    },
+    blocking() {
+      void db?.then((d) => d.close())
+      db = undefined
     },
   }))
 
@@ -32,3 +44,8 @@ export async function save(changes: Partial<Data>) {
   ]
   await Promise.all([...puts, tx.done])
 }
+
+/** The backup key is a non-extractable CryptoKey: it can encrypt here but can't be read out as bytes. */
+export const loadKey = async () => (await open()).get('keys', BACKUP_KEY)
+export const saveKey = async (key: BackupKey) => void (await open()).put('keys', key, BACKUP_KEY)
+export const deleteKey = async () => (await open()).delete('keys', BACKUP_KEY)

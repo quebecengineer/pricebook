@@ -1,16 +1,20 @@
 import { signal } from '@preact/signals'
 
+export type Every = 'change' | 'day' | 'week' | 'month' | 'manual'
+
 export interface Settings {
   currency: string
   lastStore: string
+  /** Google Drive backup is on. Kept under its original name so earlier installs carry it over. */
   driveConnected: boolean
+  /** Time of the last successful backup. */
   lastSync?: number
-  /** OAuth client ID pasted in Settings; overrides the one baked into the build. */
-  googleClientId: string
+  lastBackupBytes?: number
+  backupEvery: Every
 }
 
 const KEY = 'pricebook.settings'
-const DEFAULTS: Settings = { currency: 'INR', lastStore: '', driveConnected: false, googleClientId: '' }
+const DEFAULTS: Settings = { currency: 'INR', lastStore: '', driveConnected: false, backupEvery: 'change' }
 
 function read(): Settings {
   try {

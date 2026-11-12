@@ -1,29 +1,19 @@
-import { useEffect } from 'preact/hooks'
+import { backupFile, csvFile, share } from '../export'
 import { installPrompt, isIOS, persisted, promptInstall, standalone } from '../install'
 import { byName, live } from '../model'
 import { settings, updateSettings } from '../settings'
 import { absorb, data, rename } from '../state'
-import { driveReady, isClientId, preloadGis } from '../sync/drive'
-import { parseSnapshot, toSnapshot } from '../sync/merge'
-import { connect, disconnect, syncStatus, type SyncStatus } from '../sync/sync'
+import { parseSnapshot } from '../sync/merge'
 import { NavBar } from './Bar'
+import { BackupGroup } from './Backup'
 import { Cell, Group, NameRow, Row } from './kit'
+import { MoveGroup } from './Move'
 import { fail, toast } from './Toast'
 
 const CURRENCIES = Intl.supportedValuesOf('currency')
 const MAX_IMPORT_BYTES = 10_000_000
-const STATUS: Record<SyncStatus, string> = {
-  off: 'Off', 'signed-out': 'Paused', offline: 'Offline', idle: 'Up to date', syncing: 'Syncing…', error: 'Failed',
-}
 
-function exportFile() {
-  const blob = new Blob([JSON.stringify(toSnapshot(data.value))], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `pricebook-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-}
+const shareFile = (file: File) => share(file).catch((e) => fail(e, 'Export failed'))
 
 async function importFile(e: Event) {
   const input = e.currentTarget as HTMLInputElement
@@ -37,61 +27,6 @@ async function importFile(e: Event) {
   } catch (err) {
     fail(err, 'Import failed')
   }
-}
-
-async function saveClientId(value: string) {
-  const id = value.trim()
-  if (!isClientId(id)) throw new Error('A Client ID ends in .apps.googleusercontent.com')
-  if (settings.value.driveConnected) disconnect()
-  updateSettings({ googleClientId: id })
-  toast('Client ID saved. Now tap Connect Google Drive.')
-}
-
-function ClientIdGroup() {
-  const footer = (
-    <>
-      Free, one time: in{' '}
-      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>,
-      enable the Google Drive API, set the OAuth consent screen to Testing with you as a test user, then create an OAuth
-      client ID of type Web application with authorized JavaScript origin <b>{location.origin}</b>. It isn't a secret.
-    </>
-  )
-  return (
-    <Group header="Google Client ID" footer={footer}>
-      <NameRow label="Google OAuth Client ID" hideLabel raw value={settings.value.googleClientId} onSave={saveClientId} />
-    </Group>
-  )
-}
-
-function SyncGroup() {
-  const { driveConnected, lastSync } = settings.value
-  const ready = driveReady()
-  useEffect(() => {
-    if (ready) void preloadGis()
-  }, [ready])
-  const sync = () => connect().catch((e) => fail(e, 'Sync failed'))
-  if (!ready) {
-    return (
-      <Group header="Sync" footer="Add your Google Client ID below to back up and sync prices through your own Google Drive. Until then, use Backup.">
-        <Row title="Google Drive" value="Not set up" />
-      </Group>
-    )
-  }
-  if (!driveConnected) {
-    return (
-      <Group header="Sync" footer="Keeps one file, pricebook.json, in your Google Drive so your devices share prices. The app can only see files it created.">
-        <Row title="Connect Google Drive" tone="accent" onClick={sync} />
-      </Group>
-    )
-  }
-  return (
-    <Group header="Sync" footer="Syncs a few seconds after each change and whenever you come back online.">
-      <Row title="Google Drive" value={STATUS[syncStatus.value]} />
-      <Row title="Last Synced" value={lastSync ? new Date(lastSync).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Never'} />
-      <Row title="Sync Now" tone="accent" onClick={sync} />
-      <Row title="Disconnect" tone="danger" onClick={disconnect} />
-    </Group>
-  )
 }
 
 function DeviceGroup() {
@@ -117,6 +52,7 @@ export function Settings() {
     <>
       <NavBar title="Settings" large back="Pricebook" />
       <main>
+        <MoveGroup />
         <Group header="General">
           <Row
             title="Currency"
@@ -127,10 +63,13 @@ export function Settings() {
             }
           />
         </Group>
-        <SyncGroup />
-        <ClientIdGroup />
-        <Group header="Backup" footer="Importing merges: newer edits win and nothing else is overwritten.">
-          <Row title="Export Backup" tone="accent" onClick={exportFile} />
+        <BackupGroup />
+        <Group
+          header="Export"
+          footer="Send a backup file or a spreadsheet anywhere: WhatsApp, email, Files. Importing a backup merges: newer edits win and nothing else is overwritten."
+        >
+          <Row title="Share Backup" subtitle="JSON, can be imported again" tone="accent" onClick={() => void shareFile(backupFile(data.value))} />
+          <Row title="Share Spreadsheet" subtitle="CSV for Excel or Google Sheets" tone="accent" onClick={() => void shareFile(csvFile(data.value))} />
           <Cell>
             <label class="row-main">
               <span class="row-text">
