@@ -153,6 +153,9 @@ async function route(req: Request, env: Env, url: URL) {
 export async function handle(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url)
   if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req)
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.SESSION_KEY) {
+    return new Response('Google Drive backup is not set up', { status: 404 })
+  }
   try {
     return await route(req, env, url)
   } catch (e) {

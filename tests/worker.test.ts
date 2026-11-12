@@ -53,6 +53,12 @@ describe('sealed cookies', () => {
 
 describe('routing', () => {
   it('serves the app from static assets', async () => expect(await (await call('/')).text()).toBe('asset'))
+  it('reports backup as not set up until the Google secrets exist', async () => {
+    const res = await handle(new Request(`${ORIGIN}/api/auth/login`), { ...env, GOOGLE_CLIENT_SECRET: '' })
+    expect(res.status).toBe(404)
+    expect(res.headers.get('Content-Type')).not.toMatch(/json/)
+    expect(calls).toHaveLength(0)
+  })
 })
 
 describe('sign-in', () => {

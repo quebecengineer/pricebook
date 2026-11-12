@@ -46,10 +46,12 @@ function lastBackup() {
 export function BackupGroup() {
   const status = syncStatus.value
   if (status === 'unavailable') {
-    const where = movedTo ? `Open Pricebook at ${new URL(movedTo).host} to back up to Google Drive.` : 'Backup needs the Pricebook server, which this address does not have.'
+    const where = movedTo
+      ? `Open Pricebook at ${new URL(movedTo).host} to back up to Google Drive.`
+      : "Google Drive backup isn't set up for this copy of Pricebook yet. Use Share Backup below to keep a copy."
     return (
       <Group header="Google Drive Backup" footer={where}>
-        <Row title="Google Drive" value="Not available" />
+        <Row title="Google Drive" value="Not set up" />
       </Group>
     )
   }
