@@ -40,6 +40,14 @@ describe('parseSnapshot', () => {
     expect(() => parseSnapshot(bad({ unit: 'oz' }))).toThrow(/items/)
     expect(() => parseSnapshot(bad({ name: 'x'.repeat(201) }))).toThrow(/items/)
   })
+
+  it('accepts a slug category and rejects anything else', () => {
+    const withCategory = (category: unknown) => ({ ...toSnapshot(valid as Data), items: [{ ...valid.items[0], category }] })
+    expect(parseSnapshot(withCategory('greek-yogurt')).items[0]?.category).toBe('greek-yogurt')
+    for (const bad of [1, '', 'Greek Yogurt', '<b>x</b>', 'x'.repeat(41)]) {
+      expect(() => parseSnapshot(withCategory(bad))).toThrow(/items/)
+    }
+  })
 })
 
 describe('newer', () => {

@@ -1,10 +1,10 @@
-import type { Price, Unit } from './model'
+import { unitPrice, type Price, type Unit } from './model'
 
-/** Units a size can be typed in, mapped to their base unit and factor. */
+/** Units a size can be typed in, mapped to their base unit and how many make one base unit. */
 export const SIZE_UNITS = {
-  g: ['kg', 0.001],
+  g: ['kg', 1000],
   kg: ['kg', 1],
-  ml: ['L', 0.001],
+  ml: ['L', 1000],
   L: ['L', 1],
   pc: ['pc', 1],
 } as const satisfies Record<string, readonly [Unit, number]>
@@ -12,7 +12,8 @@ export type SizeUnit = keyof typeof SIZE_UNITS
 export const ALL_SIZE_UNITS = Object.keys(SIZE_UNITS) as SizeUnit[]
 
 export const baseOf = (u: SizeUnit): Unit => SIZE_UNITS[u][0]
-export const toBase = (amount: number, u: SizeUnit) => amount * SIZE_UNITS[u][1]
+/** Divides rather than multiplying by 0.001, which is inexact (700 g would be 0.7000000000000001 kg). */
+export const toBase = (amount: number, u: SizeUnit) => amount / SIZE_UNITS[u][1]
 export const unitsFor = (base: Unit) => ALL_SIZE_UNITS.filter((u) => baseOf(u) === base)
 
 /** Parses "12.5" or "12,5"; returns NaN unless a positive finite number. */
@@ -21,6 +22,21 @@ export function parseAmount(text: string) {
   return text.trim() && Number.isFinite(n) && n > 0 ? n : NaN
 }
 export const parseCents = (text: string) => Math.round(parseAmount(text) * 100)
+
+const SIZE_IN = /\b(?:(\d+)\s*[x×*]\s*)?(\d+(?:[.,]\d+)?)\s*(kgs?|g|gms?|grams?|ml|l|ltrs?|litres?|liters?|pcs?|pieces?)\b/i
+const PACK_OF = /\bpack of (\d+)\b/i
+const UNIT_BY_LETTER: Record<string, SizeUnit> = { k: 'kg', g: 'g', m: 'ml', l: 'L', p: 'pc' }
+
+/** Net content printed in a product name: "400g", "1.5 L", "6 x 200 ml", "pack of 6". */
+export function sizeIn(name: string): [number, SizeUnit] | undefined {
+  const m = SIZE_IN.exec(name)
+  if (m) {
+    const amount = parseAmount(m[2]!) * Number(m[1] ?? 1)
+    return amount > 0 ? [amount, UNIT_BY_LETTER[m[3]!.charAt(0).toLowerCase()]!] : undefined
+  }
+  const pack = PACK_OF.exec(name)
+  return pack && Number(pack[1]) > 0 ? [Number(pack[1]), 'pc'] : undefined
+}
 
 const formatters = new Map<string, Intl.NumberFormat>()
 function formatter(currency: string) {
@@ -35,7 +51,7 @@ export const formatDate = (at: number) =>
   new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
 export const formatUnitPrice = (p: Price, unit: Unit, currency: string) =>
-  `${formatMoney(p.cents / p.qty, currency)}/${unit}`
+  `${formatMoney(unitPrice(p), currency)}/${unit}`
 
 const round = (n: number) => Math.round(n * 1000) / 1000
 const SMALL: Record<Unit, string> = { kg: 'g', L: 'ml', pc: 'pc' }

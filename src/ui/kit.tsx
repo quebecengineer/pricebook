@@ -65,6 +65,7 @@ interface FieldProps {
   onValue: (value: string) => void
   class?: string
   prefix?: string
+  suffix?: string
   decimal?: boolean
   placeholder?: string
   autoFocus?: boolean
@@ -76,7 +77,7 @@ interface FieldProps {
 }
 
 /** iOS form row: label on the left, input filling the rest. */
-export function Field({ label, onValue, inputRef, decimal, prefix, hideLabel, raw, class: cls, ...input }: FieldProps) {
+export function Field({ label, onValue, inputRef, decimal, prefix, suffix, hideLabel, raw, class: cls, ...input }: FieldProps) {
   return (
     <label class={`field ${cls ?? ''}`}>
       <span class={hideLabel ? 'sr-only' : 'field-label'}>{label}</span>
@@ -87,6 +88,7 @@ export function Field({ label, onValue, inputRef, decimal, prefix, hideLabel, ra
         inputMode={decimal ? 'decimal' : 'text'} pattern={decimal ? '[0-9]*[.,]?[0-9]*' : undefined}
         enterKeyHint={decimal ? 'done' : 'next'} onInput={(e) => onValue(e.currentTarget.value)}
       />
+      {suffix && <span class="suffix" aria-hidden="true">{suffix}</span>}
     </label>
   )
 }
@@ -107,7 +109,7 @@ export function Chips({ label, options, selected, onPick }: { label: string; opt
   )
 }
 
-export function Segmented<T extends string>({ label, options, value, onChange }: { label: string; options: readonly T[]; value: T; onChange: (v: T) => void }) {
+export function Segmented<T extends string>({ label, options, value, onChange }: { label: string; options: readonly T[]; value?: T; onChange: (v: T) => void }) {
   return (
     <fieldset class="segmented">
       <legend class="sr-only">{label}</legend>

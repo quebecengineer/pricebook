@@ -63,6 +63,10 @@ export async function editPrice(p: Price, e: Entry) {
   await commit({ ...added, prices: [touch({ ...p, storeId: store.id, cents: e.cents, qty: e.qty })] })
 }
 
+/** An empty id returns the item to automatic categorizing. */
+export const setCategory = (item: Item, id: string) =>
+  commit(one('items', touch({ ...item, category: id || undefined })))
+
 /** Tombstones a record and returns its undo. */
 export async function remove<K extends Kind>(kind: K, r: Data[K][number]) {
   await commit(one(kind, touch({ ...r, deleted: true as const })))

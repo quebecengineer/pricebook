@@ -10,9 +10,11 @@ const isObj = (v: unknown): v is Fields => typeof v === 'object' && v !== null &
 const isText = (v: unknown) => typeof v === 'string' && v.trim().length > 0 && v.length <= 200
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0
 const isBase = (r: Fields) => isText(r.id) && isNum(r.updatedAt) && (r.deleted === undefined || r.deleted === true)
+const isSlug = (v: unknown) => typeof v === 'string' && /^[a-z0-9-]{1,40}$/.test(v)
 
 const VALID: Record<Kind, (r: Fields) => boolean> = {
-  items: (r) => isText(r.name) && (UNITS as readonly unknown[]).includes(r.unit),
+  items: (r) =>
+    isText(r.name) && (UNITS as readonly unknown[]).includes(r.unit) && (r.category === undefined || isSlug(r.category)),
   stores: (r) => isText(r.name),
   prices: (r) =>
     isText(r.itemId) && isText(r.storeId) && Number.isInteger(r.cents) && isNum(r.cents) && r.cents > 0 &&

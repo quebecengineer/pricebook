@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bestByItem, bestPrice, compare, findByName, isStale, latestByStore, normalizeName, recentStores, rows, sections, upsert,
+  bestByItem, bestPrice, compare, currentByItem, findByName, isStale, latestByStore, normalizeName, recentStores, rows,
+  sections, upsert,
   type Price,
 } from '../src/model'
 
@@ -25,6 +26,10 @@ describe('bestPrice', () => {
   })
   it('keeps the earlier entry on a tie', () => {
     expect(bestPrice([price('late', 200, 1, 9), price('early', 100, 0.5, 1)])?.id).toBe('early')
+  })
+  it('treats equal unit prices as a tie despite float noise', () => {
+    expect(bestPrice([price('kg', 10000, 1, 1), price('700g', 7000, 0.7, 2)])?.id).toBe('kg')
+    expect(bestPrice([price('kg', 10000, 1, 1), price('stored', 7000, 0.7000000000000001, 2)])?.id).toBe('kg')
   })
   it('ignores deleted entries', () => {
     expect(bestPrice([price('a', 1, 1, 1, { deleted: true }), price('b', 5, 1, 2)])?.id).toBe('b')
@@ -67,7 +72,36 @@ describe('rows', () => {
   it('filters by query and attaches best', () => {
     const [row] = rows(data, ' APP')
     expect(row?.item.id).toBe('a')
-    expect(row?.best?.id).toBe('p')
+    expect(row?.price?.id).toBe('p')
+  })
+  it('finds items by category even when the name lacks the word', () => {
+    const items = [{ id: 'd', name: 'Amul Masti Dahi', unit: 'kg' as const, updatedAt: 1 }]
+    expect(rows({ items, stores: [], prices: [] }, 'yogurt').map((r) => r.item.id)).toEqual(['d'])
+  })
+})
+
+describe('currentByItem', () => {
+  it('uses the latest price at each store, so an old deal stops counting', () => {
+    const now = currentByItem([price('old-deal', 100, 1, 1), price('now', 300, 1, 5), price('other', 200, 1, 2, { storeId: 's2' })])
+    expect(now.get('milk')?.id).toBe('other')
+  })
+})
+
+describe('rows by cost', () => {
+  const item = (id: string, unit: 'kg' | 'L' | 'pc', name = id) => ({ id, name, unit, updatedAt: 1 })
+  const data = {
+    items: [item('pc1', 'pc'), item('kg-dear', 'kg'), item('kg-none', 'kg'), item('kg-cheap', 'kg'), item('kg-fresh', 'kg')],
+    stores: [],
+    prices: [
+      price('a', 50, 1, 1, { itemId: 'pc1' }),
+      price('b', 900, 1, 1, { itemId: 'kg-dear' }),
+      price('c', 300, 1, 1, { itemId: 'kg-cheap' }),
+      price('d', 150, 0.5, 9, { itemId: 'kg-fresh' }),
+    ],
+  }
+  it('groups by unit, then cheapest, then fresher, with unpriced last', () => {
+    expect(rows(data, 'k', true).map((r) => r.item.id)).toEqual(['kg-fresh', 'kg-cheap', 'kg-dear', 'kg-none'])
+    expect(rows(data, '', true).map((r) => r.item.id)).toEqual(['kg-fresh', 'kg-cheap', 'kg-dear', 'kg-none', 'pc1'])
   })
 })
 

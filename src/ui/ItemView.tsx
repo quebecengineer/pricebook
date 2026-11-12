@@ -1,13 +1,14 @@
 import { useState } from 'preact/hooks'
+import { CATEGORIES, categorize, category } from '../categories'
 import { bestPrice, compare, isStale, nameOf, pricesOf, type Comparison, type Item, type Price } from '../model'
 import { back, go } from '../router'
 import { settings } from '../settings'
-import { data, rename } from '../state'
+import { data, rename, setCategory } from '../state'
 import { ago, formatDate, formatMoney, formatSize, formatUnitPrice } from '../units'
 import { NavBar, Toolbar } from './Bar'
 import { Icon } from './Icon'
 import { Cell, Empty, Group, NameRow, Row } from './kit'
-import { toast } from './Toast'
+import { fail, toast } from './Toast'
 import { removeWithUndo } from './undo'
 
 const store = (p: Price) => nameOf(data.value.stores, p.storeId)
@@ -25,6 +26,32 @@ function CompareRow({ c: { price, ratio, deltaPct }, item }: { c: Comparison; it
         {deltaPct === 0 ? <span class="badge">Best</span> : <span class="row-sub">+{deltaPct}%</span>}
       </div>
     </Cell>
+  )
+}
+
+/** Says where the category came from, so a wrong one is easy to trace and fix. */
+function CategoryGroup({ item }: { item: Item }) {
+  const auto = categorize(item.name)
+  const manual = category(item.category)
+  const footer = manual
+    ? 'Set by you. Choose Automatic to go back to matching the name.'
+    : auto
+      ? `Matched “${auto.term}” in the name.`
+      : 'Nothing in the name matched. Pick one so it shows up when you search a category.'
+  return (
+    <Group header="Category" footer={footer}>
+      <Cell>
+        <label class="field">
+          <span class="field-label">Category</span>
+          <select value={manual?.id ?? ''} onChange={(e) => void setCategory(item, e.currentTarget.value).catch(fail)}>
+            <option value="">Automatic{auto && ` (${category(auto.id)?.name})`}</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>{'\u2003'.repeat(c.depth - 1) + c.name}</option>
+            ))}
+          </select>
+        </label>
+      </Cell>
+    </Group>
   )
 }
 
@@ -86,6 +113,7 @@ export function ItemView({ id }: { id: string }) {
             {compare(own).map((c) => <CompareRow key={c.price.id} c={c} item={item} />)}
           </Group>
         )}
+        <CategoryGroup item={item} />
         <Group header="History" footer={editing ? undefined : 'Tap an entry to correct it.'}>
           {[...own].sort((a, b) => b.at - a.at).map((p) => (
             <Row

@@ -1,3 +1,5 @@
+import { searcher } from './categories'
+
 export type Unit = 'kg' | 'L' | 'pc'
 export const UNITS: readonly Unit[] = ['kg', 'L', 'pc']
 
@@ -9,6 +11,8 @@ export interface Base {
 export interface Item extends Base {
   name: string
   unit: Unit
+  /** Taxonomy id you picked; when absent the name decides. */
+  category?: string
 }
 export interface Store extends Base {
   name: string
@@ -43,7 +47,9 @@ export const nameOf = (list: Store[], id: string) => list.find((r) => r.id === i
 export const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 
-export const unitPrice = (p: Price) => p.cents / p.qty
+/** Rounded to a millionth of a cent so equal prices compare equal despite float noise in stored quantities. */
+export const perUnit = (cents: number, qty: number) => Math.round((cents / qty) * 1e6) / 1e6
+export const unitPrice = (p: Price) => perUnit(p.cents, p.qty)
 export const pricesOf = (prices: Price[], itemId: string) =>
   live(prices).filter((p) => p.itemId === itemId)
 
@@ -63,15 +69,24 @@ export function bestByItem(prices: Price[]) {
   return best
 }
 
-/** Most recent price at each store, cheapest first. */
-export function latestByStore(prices: Price[]) {
+function latestBy(prices: Price[], keyOf: (p: Price) => string) {
   const latest = new Map<string, Price>()
   for (const p of live(prices)) {
-    const current = latest.get(p.storeId)
-    if (!current || p.at > current.at) latest.set(p.storeId, p)
+    const current = latest.get(keyOf(p))
+    if (!current || p.at > current.at) latest.set(keyOf(p), p)
   }
-  return [...latest.values()].sort((a, b) => unitPrice(a) - unitPrice(b))
+  return [...latest.values()]
 }
+
+/** Most recent price at each store, cheapest first. */
+export const latestByStore = (prices: Price[]) =>
+  latestBy(prices, (p) => p.storeId).sort((a, b) => unitPrice(a) - unitPrice(b))
+
+/** What each item costs now: the cheapest of its latest prices at each store. */
+export const currentByItem = (prices: Price[]) => bestByItem(latestBy(prices, (p) => `${p.itemId} ${p.storeId}`))
+
+/** Percent above the cheapest unit price; 0 for the cheapest. */
+export const pctAbove = (price: number, min: number) => (min ? Math.round((price / min - 1) * 100) : 0)
 
 export interface Comparison {
   price: Price
@@ -88,7 +103,7 @@ export function compare(prices: Price[]): Comparison[] {
   return latest.map((price) => ({
     price,
     ratio: max ? unitPrice(price) / max : 1,
-    deltaPct: min ? Math.round((unitPrice(price) / min - 1) * 100) : 0,
+    deltaPct: pctAbove(unitPrice(price), min),
   }))
 }
 
@@ -107,16 +122,27 @@ export const isStale = (at: number, now = Date.now()) => now - at > STALE_MS
 
 export interface Row {
   item: Item
-  best?: Price
+  /** All-time best, or the current price when ranking by cost. */
+  price?: Price
 }
 
-export function rows({ items, prices }: Data, query: string): Row[] {
-  const q = key(query)
-  const best = bestByItem(prices)
+const byItem = (a: Row, b: Row) => byName(a.item, b.item) || a.item.id.localeCompare(b.item.id)
+const costOf = (r: Row) => (r.price ? unitPrice(r.price) : Infinity)
+
+/** Unit, then cheapest, then freshest; unpriced rows last. Infinity - Infinity is NaN, which falls through. */
+const byCost = (a: Row, b: Row) =>
+  UNITS.indexOf(a.item.unit) - UNITS.indexOf(b.item.unit) ||
+  costOf(a) - costOf(b) ||
+  (b.price?.at ?? 0) - (a.price?.at ?? 0) ||
+  byItem(a, b)
+
+/** Items matching `query` by name or category, A–Z or (with `cheapest`) ranked by current unit price. */
+export function rows({ items, prices }: Data, query: string, cheapest = false): Row[] {
+  const price = (cheapest ? currentByItem : bestByItem)(prices)
   return live(items)
-    .filter((i) => i.name.toLocaleLowerCase().includes(q))
-    .sort(byName)
-    .map((item) => ({ item, best: best.get(item.id) }))
+    .filter(searcher(query))
+    .map((item) => ({ item, price: price.get(item.id) }))
+    .sort(cheapest ? byCost : byItem)
 }
 
 function replace<T extends Base>(list: T[], changes: T[] = []) {
@@ -131,12 +157,12 @@ const letterOf = (name: string) => {
   return /\p{L}/u.test(ch) ? ch : '#'
 }
 
-/** Groups already-sorted rows under their first letter, for an indexed list. */
-export function sections(list: Row[]): [string, Row[]][] {
+/** Groups already-sorted rows by key; by default under their first letter, for an indexed list. */
+export function sections(list: Row[], keyOf = (r: Row) => letterOf(r.item.name)): [string, Row[]][] {
   const groups = new Map<string, Row[]>()
   for (const row of list) {
-    const letter = letterOf(row.item.name)
-    groups.set(letter, [...(groups.get(letter) ?? []), row])
+    const k = keyOf(row)
+    groups.set(k, [...(groups.get(k) ?? []), row])
   }
   return [...groups]
 }

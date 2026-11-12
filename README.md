@@ -4,13 +4,14 @@ A private, offline-first grocery price tracker. Log what you pay; see, at a glan
 
 - **Instant answer:** an alphabetical, searchable list of every item with its all-time lowest unit price (per kg, L or piece) and where you found it.
 - **Honest best price:** the best only drops when a new price is strictly cheaper per unit. Edit or delete an entry and the best recalculates.
+- **Search by category, ranked by cost:** "curd", "yogurt" or "greek yogurt" finds every matching item even when its name is just brand noise ("Amul Masti Dahi 1kg"), then ranks them cheapest first by today's price per kg, L or piece. Categorizing is a built-in dictionary (no AI, nothing leaves the device); each item page shows why it got its category and lets you override it.
 - **Works with zero signal:** after the first visit, the app loads and saves entirely offline (installable PWA, data in IndexedDB).
 - **Zero cost, no server:** hosted on GitHub Pages. Optional sync keeps one `pricebook.json` in your own Google Drive.
 
 ## Use
 
 1. Tap **Log Price** in the bottom toolbar, or the **+** on an item's row. Pick a recent store chip, type the price (and optionally the pack size), and the sheet tells you whether it beats your best before you tap **Save**. The sheet stays open, with the same store, for the next item; **Done** closes it.
-2. At checkout, search the list. Tap an item for its all-time best, a comparison of the latest price at each store, and the full history. Tap a history entry to correct it; **Edit** reveals delete, rename and Delete Item (all undoable).
+2. At checkout, search the list by item or category. Results rank cheapest first (switch to A–Z above them); tap a category chip to narrow. Tap an item for its all-time best, a comparison of the latest price at each store, and the full history. Tap a history entry to correct it; **Edit** reveals delete, rename and Delete Item (all undoable).
 3. **Settings** has currency, Drive sync, backup export/import, store rename/merge, and install/offline-storage status.
 
 The interface follows Apple's Human Interface Guidelines (large titles, inset grouped lists, modal sheets) and respects your text size, dark mode and reduced-motion settings.
@@ -62,7 +63,9 @@ The client ID is not a secret: browser apps ship it in their page code, Google o
 | Path | Role |
 | --- | --- |
 | `src/model.ts` | Types and pure rules: best price, latest per store, list rows |
-| `src/units.ts` | Unit conversion, parsing and formatting |
+| `src/units.ts` | Unit conversion, parsing (including pack sizes in names) and formatting |
+| `src/taxonomy.ts` | Category tree and the words that name each category (data only) |
+| `src/categories.ts` | Deterministic categorizing (longest phrase, head noun) and category-aware search |
 | `src/db.ts` | IndexedDB access (one transaction per change) |
 | `src/state.ts` | App state and actions: log, edit, delete/undo, rename/merge |
 | `src/sync/merge.ts` | Validation of untrusted files and last-write-wins merge |

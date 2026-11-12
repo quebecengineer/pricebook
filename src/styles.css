@@ -80,7 +80,7 @@ label.row-main:focus-within { outline: 3px solid var(--accent); outline-offset: 
 .field:focus-within { box-shadow: inset 3px 0 var(--accent); }
 .field input::placeholder { color: var(--label-3); }
 .field input:disabled { color: var(--label-2); }
-.prefix { color: var(--label-2); }
+.prefix, .suffix { color: var(--label-2); }
 .price-field input, .price-field .prefix { font-size: var(--t-title2); font-weight: 600; font-variant-numeric: tabular-nums; }
 .chips { display: flex; gap: 8px; overflow-x: auto; margin: -16px calc(-1 * var(--inset)) 20px; padding: 10px var(--inset) 4px; scrollbar-width: none; }
 .chip { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cell); font-size: var(--t-sub); }
@@ -90,6 +90,8 @@ label.row-main:focus-within { outline: 3px solid var(--accent); outline-offset: 
 .segmented span { display: block; padding: 6px 4px; border-radius: 7px; text-align: center; font-size: var(--t-sub); font-weight: 500; cursor: pointer; }
 .segmented input:checked + span { background: var(--segment); box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); font-weight: 600; }
 .segmented input:focus-visible + span { outline: 3px solid var(--accent); }
+.list-page .segmented { margin: -8px 0 20px; }
+.field select { flex: 1; min-width: 0; min-height: var(--tap); border: 0; background: none; outline: none; }
 .verdict { margin: -22px var(--inset) 24px; min-height: 1.3em; font-size: var(--t-foot); color: var(--label-2); }
 .verdict.good { color: var(--accent); font-weight: 600; }
 .inline-form { flex: 1; display: flex; align-items: center; min-width: 0; padding-right: 8px; }

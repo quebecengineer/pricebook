@@ -1,14 +1,14 @@
 import { useRef, useState } from 'preact/hooks'
 import {
-  bestPrice, byId, findByName, live, nameOf, normalizeName, pricesOf, recentStores, rows, unitPrice,
+  bestPrice, byId, findByName, live, nameOf, normalizeName, perUnit, pricesOf, recentStores, rows, unitPrice,
   type Price, type Unit,
 } from '../model'
 import { back } from '../router'
 import { settings, updateSettings } from '../settings'
 import { data, editPrice, logPrice } from '../state'
 import {
-  ALL_SIZE_UNITS, baseOf, currencySymbol, formatMoney, formatUnitPrice, fromBase, parseAmount, parseCents, toBase,
-  unitsFor, type SizeUnit,
+  ALL_SIZE_UNITS, baseOf, currencySymbol, formatMoney, formatUnitPrice, fromBase, parseAmount, parseCents, sizeIn,
+  toBase, unitsFor, type SizeUnit,
 } from '../units'
 import { Cell, Chips, Field, Group, Row, Segmented, haptic } from './kit'
 import { Sheet } from './Sheet'
@@ -41,6 +41,13 @@ function describe(unitCents: number, best: Price | undefined, unit: Unit, curren
   return { text: `${per} · ${pct}% above your best (${ref})`, good: false }
 }
 
+/** A blank size means one base unit; a sub-unit like g needs an amount. */
+function quantity(size: string, u: SizeUnit | undefined) {
+  if (!u) return NaN
+  if (size.trim()) return toBase(parseAmount(size), u)
+  return u === baseOf(u) ? 1 : NaN
+}
+
 function savedMessage(name: string, p: Price, prev: Price | undefined, unit: Unit): Parameters<typeof toast> {
   if (prev && bestPrice([prev, p]) === p) return [`New best for ${name}`, { tone: 'good' }]
   if (!prev) return [`Saved ${name}`]
@@ -62,15 +69,19 @@ export function LogSheet({ arg, edit }: { arg: string; edit?: boolean }) {
 
   const known = findByName(items, item)
   const options = known ? unitsFor(known.unit) : ALL_SIZE_UNITS
-  const u = options.includes(unit) ? unit : (known?.unit ?? 'pc')
-  const base = baseOf(u)
+  const u = options.includes(unit) ? unit : size.trim() ? undefined : known?.unit
+  const base = u ? baseOf(u) : (known?.unit ?? 'pc')
   const cents = parseCents(price)
-  const qty = size.trim() ? toBase(parseAmount(size), u) : 1
+  const qty = quantity(size, u)
   const valid = !!item.trim() && !!storeName.trim() && cents > 0 && qty > 0
   const best = known && bestPrice(pricesOf(prices, known.id).filter((p) => p.id !== editing?.id))
-  const hint = valid ? describe(cents / qty, best, base, currency) : { text: '', good: false }
+  const hint = valid
+    ? describe(perUnit(cents, qty), best, base, currency)
+    : { text: known && !u ? `${known.name} is priced per ${known.unit} · pick a unit` : '', good: false }
   const dirty = editing ? storeName !== init.store || price !== init.price || size !== init.size : !!price.trim()
   const itemChips = item.trim() && !known ? rows(data.value, item).slice(0, ITEM_CHIPS).map((r) => r.item.name) : []
+  const named = size.trim() ? undefined : sizeIn(item)
+  const sizeChip = named && options.includes(named[1]) ? named : undefined
 
   const close = () => (!dirty || confirm('Discard this price?')) && back()
 
@@ -129,13 +140,22 @@ export function LogSheet({ arg, edit }: { arg: string; edit?: boolean }) {
             />
           </Cell>
           <Cell>
-            <Field label="Size" decimal value={size} onValue={setSize} placeholder={`1 ${base}`} />
+            <Field label="Size" decimal value={size} onValue={setSize} suffix={u} placeholder={u === base ? '1' : 'Required'} />
           </Cell>
           <Cell>
             <Segmented label="Unit" options={options} value={u} onChange={setUnit} />
           </Cell>
         </Group>
         <p class={`verdict ${hint.good ? 'good' : ''}`} aria-live="polite">{hint.text}</p>
+        {sizeChip && (
+          <Chips
+            label="Size from name" options={[`Use ${sizeChip.join(' ')}`]}
+            onPick={() => {
+              setSize(String(sizeChip[0]))
+              setUnit(sizeChip[1])
+            }}
+          />
+        )}
       </form>
       {editing && (
         <Group>

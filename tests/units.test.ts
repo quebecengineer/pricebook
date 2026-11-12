@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { ago, formatSize, fromBase, parseAmount, parseCents, toBase, unitsFor } from '../src/units'
+import { ago, formatSize, fromBase, parseAmount, parseCents, sizeIn, toBase, unitsFor } from '../src/units'
 
 describe('units', () => {
   it('converts to base units', () => {
     expect(toBase(500, 'g')).toBe(0.5)
     expect(toBase(2, 'L')).toBe(2)
+  })
+  it('converts every whole g and ml exactly', () => {
+    for (let n = 1; n <= 1000; n++) {
+      expect(toBase(n, 'g')).toBe(n / 1000)
+      expect(toBase(n, 'ml')).toBe(n / 1000)
+    }
   })
   it('lists units of the same dimension', () => expect(unitsFor('kg')).toEqual(['g', 'kg']))
   it('formats small sizes in sub-units', () => {
@@ -29,6 +35,25 @@ describe('parsing', () => {
   it('rounds to whole cents', () => {
     expect(parseCents('0.29')).toBe(29)
     expect(parseCents('19.999')).toBe(2000)
+  })
+})
+
+describe('sizeIn', () => {
+  it.each([
+    ['Amul Curd 400g', [400, 'g']],
+    ['Bread 400 gm', [400, 'g']],
+    ['Atta 5 Kg', [5, 'kg']],
+    ['Coke 1.5L', [1.5, 'L']],
+    ['Milk 1,5 L', [1.5, 'L']],
+    ['Oil 1 Ltr', [1, 'L']],
+    ['Juice 500 ML', [500, 'ml']],
+    ['Lassi 6 x 200 ml', [1200, 'ml']],
+    ['Eggs 30 pcs', [30, 'pc']],
+    ['Pack of 6 Soaps', [6, 'pc']],
+  ])('reads %s', (name, size) => expect(sizeIn(name)).toEqual(size))
+
+  it.each(['Parle-G', 'A2 Milk', '7up', 'Thums Up', 'Maggi 2-Minute Noodles'])('finds no size in %s', (name) => {
+    expect(sizeIn(name)).toBeUndefined()
   })
 })
 
